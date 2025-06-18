@@ -1,6 +1,12 @@
 # Retail Sales Forecasting Using Predictive Modelling
 
-This project implements and compares multiple time series forecasting models (ARIMA, SARIMA, SARIMAX, LSTM) to predict retail sales. It includes robust evaluation, high-quality visualizations, and a comprehensive academic report.
+This project investigates the process of retail sales forecasting using various predictive modeling techniques. It implements and compares multiple time series forecasting models (ARIMA, SARIMA, SARIMAX, LSTM) to predict retail sales, with a focus on understanding the methodological approach rather than achieving optimal performance.
+
+## Project Status
+
+This is an educational research project with known limitations. Due to time constraints, limited effort was dedicated to fine-tuning the models, resulting in various errors and suboptimal performance in some areas. The codebase serves primarily as a demonstration of the forecasting pipeline and methodology rather than a production-ready solution.
+
+The project includes evaluation metrics, visualizations, and an academic report documenting the approach and findings.
 
 ---
 
