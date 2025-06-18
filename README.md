@@ -4,17 +4,17 @@ This project implements and compares multiple time series forecasting models (AR
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
-- `Datasets/` — Raw and processed data files (**not tracked by git**)
+- `Datasets/` — Raw and processed data files (not tracked by git)
 - `Models/` — Python scripts for each model, utilities, and results/logs
-- `Results/` — Generated figures, plots, and outputs (**not tracked by git**)
+- `Results/` — Generated figures, plots, and outputs (not tracked by git)
 - `Tek Code/` — LaTeX report, figures, presentation, and bibliography
 - `Research/` — Literature review, notes, and supporting research
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 - Automated training, evaluation, and result saving for ARIMA, SARIMA, SARIMAX, and LSTM models
 - Consistent metrics: MAE, RMSE, R², MAPE, Direction Accuracy
@@ -24,35 +24,35 @@ This project implements and compares multiple time series forecasting models (AR
 
 ---
 
-## ⚙️ Setup
+## Setup
 
-1. **Clone the repository**
-2. **Install dependencies:**
+1. Clone the repository
+2. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-3. **Place required datasets in `Datasets/`** (see report for details)
+3. Place required datasets in `Datasets/` (see report for details)
 
 ---
 
-## 🧑‍🔬 Preprocessing Pipeline
+## Preprocessing Pipeline
 
 The project includes a robust, modular preprocessing pipeline to prepare data for modeling:
 
-1. **Data Cleaning:**
+1. Data Cleaning:
    - `Models/clean_retail_index.py` and `Models/clean_external_factors.py`
    - Cleans raw retail and external datasets, handling missing values and formatting.
-2. **EDA & Feature Engineering:**
+2. EDA & Feature Engineering:
    - `Models/eda.py`
    - Merges, explores, and enhances features; saves the enhanced dataset in `results/eda/` with a timestamp.
-3. **Stationarity Testing:**
+3. Stationarity Testing:
    - `Models/stationarity_test.py`
    - Loads the latest EDA output, runs ADF and KPSS tests, and recommends columns for differencing. Outputs detailed results and recommendations to `results/stationarity/`.
-4. **Iterative Differencing:**
+4. Iterative Differencing:
    - `Models/diff.py`
    - Reads stationarity recommendations, applies differencing iteratively (up to order 3), and re-tests for stationarity after each step. Only stops when all series are stationary or max order reached. Plots and saves all results robustly.
 
-**To run the full preprocessing sequence:**
+To run the full preprocessing sequence:
 
 ```bash
 python Models/clean_external_factors.py
@@ -68,7 +68,7 @@ python Models/diff.py
 
 ---
 
-## 🧑‍💻 Running Models
+## Running Models
 
 Run individual model scripts from the `Models/` directory:
 
@@ -81,19 +81,50 @@ python Models/sarimax.py
 
 Results and plots will be saved in model-specific results folders.
 
+### LSTM: Advanced Neural Network Forecasting
+
+The LSTM script provides a robust neural network approach with cross-validation support:
+
+```bash
+# Basic usage
+python Models/lstm.py --data_csv original_data.csv --train_size 0.8 --seq_length 12 --epochs 50
+
+# With cross-validation
+python Models/lstm.py --data_csv original_data.csv --seq_length 12 --epochs 50 --cv --cv_splits 3
+```
+
+Key Features:
+- Time series cross-validation with configurable folds
+- Feature importance calculation
+- Comprehensive residual diagnostics
+- Robust plotting with automatic handling of mismatched array lengths
+- Advanced visualization exports for Tableau integration
+- Detailed logging and organized result storage
+
+Parameters:
+- `--data_csv`: Input CSV file path (can use output from diff.py)
+- `--train_size`: Proportion for training (default: 0.8)
+- `--seq_length`: Lookback window size (default: 12)
+- `--epochs`: Training epochs (default: 50)
+- `--batch_size`: Batch size (default: 32)
+- `--lstm_units`: Units in LSTM layers (default: 64)
+- `--dropout_rate`: Dropout for regularization (default: 0.0)
+- `--cv`: Enable cross-validation
+- `--cv_splits`: Number of CV folds (default: 3)
+
 ### SARIMAX: Dropping Low-Correlation Exogenous Variables
 
 The SARIMAX script supports an optional command-line argument for exogenous variable selection:
 
 - `--drop_failed_correlators`: If you include this flag, exogenous variables with an absolute correlation less than 0.05 with the target (on the training set) will be dropped automatically before model fitting. By default, all exogenous variables are kept and their correlations are logged for your review.
 
-**Usage Examples:**
+Usage Examples:
 
-- **Keep all exogenous variables (default):**
+- Keep all exogenous variables (default):
   ```bash
   python Models/sarimax.py --data_csv <input.csv> --target_col <target> --exog_cols <col1,col2,...>
   ```
-- **Drop low-correlation exogenous variables:**
+- Drop low-correlation exogenous variables:
   ```bash
   python Models/sarimax.py --data_csv <input.csv> --target_col <target> --exog_cols <col1,col2,...> --drop_failed_correlators
   ```
@@ -103,7 +134,7 @@ The SARIMAX script supports an optional command-line argument for exogenous vari
 
 ---
 
-## 📊 Building the Report
+## Building the Report
 
 Navigate to `Tek Code/` and build the LaTeX report:
 
@@ -117,14 +148,14 @@ pdflatex Final_report.tex
 
 ---
 
-## 📝 Notes
+## Notes
 
 - Large files, datasets, and generated outputs are excluded from version control via `.gitignore`.
 - For questions or contributions, see the report or contact the author.
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a new branch (`git checkout -b feature/your-feature`)
@@ -134,13 +165,13 @@ pdflatex Final_report.tex
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under [CC0 1.0 Universal](LICENSE).
 
 ---
 
-## 📚 References
+## References
 
 See `Tek Code/references.bib` and the final report for full academic references.
 
