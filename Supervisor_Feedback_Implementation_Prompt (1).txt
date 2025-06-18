@@ -1,0 +1,124 @@
+
+TECHNICAL PROMPT
+Title: Implementing Supervisor Feedback for Forecast Interpretation and Visual Communication in Retail Forecasting Report
+
+Objective:
+To critically enhance the clarity, interpretability, and technical presentation of forecasting results in the Retail Sales Forecasting Using Predictive Modelling report, by systematically applying the feedback provided by the academic supervisor.
+
+The focus is on interpreting key figures, replotting visuals for readability, generating missing analytical artefacts, and deriving clear insights from model behaviours, without altering the underlying models or data.
+
+Context:
+This report involves forecasting the UK Retail Sales Index using ARIMA, SARIMA, SARIMAX, and LSTM models. A complete suite of scripts, result JSONs, visual plots, and a final report was submitted for academic assessment.
+
+The supervisor provided constructive feedback identifying a lack of narrative insight around visualisations, missing validation diagnostics, font size/accessibility issues, and a request for feature attribution through permutation importance.
+
+The agent's task is to operationalise these gaps and prepare supplementary material that could be used to enhance both academic and publishable versions of the report.
+
+TASK GROUPS
+
+TASK GROUP 1: Interpretation & Insight Generation for Figures
+Goal: Translate each figure (e.g., forecasts, residuals, validation curves) into clear, meaningful narrative insights.
+
+Instructions:
+- For every PNG figure provided or referenced in the report:
+  - Generate a title, caption, and a 3–4 sentence interpretation.
+    - What is being shown?
+    - What behaviour is revealed (bias, over/underfitting, lagging forecasts)?
+    - What does this imply about the model’s strengths or weaknesses?
+  - Link each insight to performance metrics or modelling assumptions if relevant.
+
+TASK GROUP 2: Forecast Comparison Visuals – Actual vs Predicted
+Goal: Ensure high-quality, interpretable plots showing actual vs predicted sales across all models.
+
+Instructions:
+- Use tableau_forecast_data.csv or original model outputs to:
+  - Reconstruct or validate the actual vs predicted time series plots
+  - Ensure temporal alignment (monthly frequency)
+  - Optionally show multiple models on the same axis for comparative insight
+- Required plot elements:
+  - Clear axis labels (Month, Sales Index)
+  - Readable font sizes (minimum font size: 14)
+  - Visual distinction between models (e.g., line styles, colour coding)
+  - Annotate key timeframes if possible (e.g., COVID-19 onset, 2023 peak)
+
+TASK GROUP 3: Visual Enhancement for Presentation Quality
+Goal: Improve visual clarity and academic presentation of all model-related plots.
+
+Instructions:
+- For each image (*.png), do the following:
+  - Increase font size of X and Y axis labels, tick labels, legends (minimum: 14pt)
+  - Ensure visual balance (e.g., not overly compressed timelines)
+  - Add descriptive titles above the plot (e.g., “Residual Distribution of SARIMA Model”)
+- Save enhanced versions with a new suffix _v2 (e.g., residuals_analysis_v2.png)
+- Ensure consistency across all visual styles
+
+TASK GROUP 4: LSTM Validation Metrics Visualisation
+Goal: Visualise training vs validation behaviour during LSTM training.
+
+Instructions:
+- Use available training history files:
+  - fold_1_training_history.png, fold_2_training_history.png, fold_3_training_history.png
+  - Or access the lstm.py training logs if regeneration is needed
+- Validate whether these contain validation loss/accuracy per epoch.
+- If not clearly separated, regenerate training curves using Keras/TensorFlow history object:
+  - Plot loss vs val_loss per epoch for each fold
+  - Highlight convergence patterns or signs of overfitting
+- Label axes appropriately and save under new filenames:
+  - e.g., lstm_fold1_training_validation_loss.png
+
+TASK GROUP 5: Permutation Feature Importance Analysis
+Goal: Quantitatively assess the relative importance of each feature used in the LSTM model.
+
+Instructions:
+- Implement permutation importance on the trained LSTM model:
+  - For each input feature, randomly shuffle the column values across all test instances
+  - Recompute the prediction error (e.g., RMSE or MAE)
+  - Record the performance degradation
+- Plot results as a horizontal bar chart:
+  - X-axis: Increase in RMSE
+  - Y-axis: Feature names (sorted by importance)
+- Highlight the most influential features (e.g., Month, SalesIndex)
+- Save as lstm_permutation_feature_importance.png
+
+Optional Extensions (for publication-readiness):
+- Consider combining results into a composite figure with subplots (e.g., Figure 5.1 A–D)
+- Prepare a figure index or visual appendix with short summaries under each plot
+- Consider SHAP values as a future method for interpretable modelling
+
+Deliverables:
+1. Enhanced versions of all relevant plots with axis/title/legend improvements.
+2. A .md or .txt file with:
+   - Captions and short interpretations for all figures
+   - Highlights of how each visual confirms or challenges the model's performance
+3. A permutation importance chart with ranking of features by influence
+4. Updated LSTM training vs validation plots (1 per fold)
+5. A list of “Insights Derived from Visuals” to be appended to the results/discussion chapters
+
+Notes:
+- Do not retrain models. Only visual, diagnostic, or interpretation layers are allowed unless specified.
+- Maintain consistency in naming, formatting, and narrative voice.
+- All code used should be reproducible via the provided scripts or clear from outputs.
+
+
+TASK GROUP 6: Script Audit – Training and Validation Logging
+
+Goal: Confirm whether the training and validation loss/accuracy metrics are being tracked during model training, particularly for LSTM.
+
+Instructions:
+- Open and review the `lstm.py` script.
+- Search for evidence of:
+  - A validation set being passed during `model.fit()` (e.g., `validation_data=...`)
+  - The Keras `History` object being captured and saved (i.e., output of `model.fit()` assigned to a variable)
+  - Any code that plots or saves training vs validation loss curves using `history.history['loss']` and `history.history['val_loss']`
+- If not present:
+  - Add validation split to model training (`validation_split=0.2` or appropriate custom split)
+  - Capture the training history and generate a line plot of training vs validation loss per epoch
+  - Save the plot as `lstm_training_validation_loss.png` and log the history for reproducibility
+
+Deliverables:
+- A report snippet confirming whether training vs validation metrics were tracked.
+- If missing, generate and include the required loss curves and log files.
+
+Note:
+- This step ensures that model training quality is interpretable and reproducible.
+- Focus only on LSTM or any other script using neural networks (e.g., CNN, RNN).

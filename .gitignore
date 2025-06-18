@@ -1,0 +1,78 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+*.dll
+*.pyo
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# LaTeX build files
+*.aux
+*.bbl
+*.blg
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.nav
+*.snm
+*.vrb
+*.xdv
+
+# PDF and other generated docs
+*.pdf
+
+# Model and results artifacts
+*.h5
+*.pkl
+*.joblib
+*.sav
+*.npy
+*.npz
+*.csv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.db
+
+# Results and plots (keep only source code, not generated outputs)
+Results/
+Models/arima_results/
+Models/lstm_results/
+Models/results/
+Models/logs/
+
+# Datasets (if you want to keep them out of version control)
+Datasets/
+Datasets in Text Form/
+
+# Misc
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# Ignore report build artifacts
+Tek Code/Final_report.*
+!Tek Code/Final_report.tex
+!Tek Code/references.bib
+Tek Code/figures/
+Tek Code/presentation/
