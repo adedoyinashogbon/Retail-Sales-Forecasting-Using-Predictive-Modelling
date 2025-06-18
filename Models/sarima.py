@@ -7,6 +7,7 @@ import logging
 from datetime import datetime
 import json
 import os
+import argparse
 from pmdarima import auto_arima
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from statsmodels.tsa.statespace.sarimax import SARIMAX
@@ -370,12 +371,13 @@ def analyze_residuals(model_fit):
     
     return residuals
 
-def load_data(file_path: str) -> pd.DataFrame:
+def load_data(file_path: str, target_col: str) -> pd.DataFrame:
     """
     Load and prepare time series data.
     
     Args:
         file_path: Path to the data file
+        target_col: Name of the target column for forecasting
         
     Returns:
         DataFrame with prepared data
@@ -391,8 +393,8 @@ def load_data(file_path: str) -> pd.DataFrame:
         # Validate required columns
         if 'Date' not in df.columns:
             raise ValueError("Data must contain a 'Date' column")
-        if 'SalesIndex' not in df.columns:
-            raise ValueError("Data must contain a 'SalesIndex' column")
+        if target_col not in df.columns:
+            raise ValueError(f"Data must contain the target column '{target_col}'")
             
         # Convert Date column to datetime and set as index
         df['Date'] = pd.to_datetime(df['Date'])
@@ -402,8 +404,8 @@ def load_data(file_path: str) -> pd.DataFrame:
         df.sort_index(inplace=True)
         
         # Validate data types
-        if not pd.api.types.is_numeric_dtype(df['SalesIndex']):
-            raise ValueError("SalesIndex column must be numeric")
+        if not pd.api.types.is_numeric_dtype(df[target_col]):
+            raise ValueError(f"Target column '{target_col}' must be numeric")
             
         logger.info(f"Successfully loaded data with shape {df.shape}")
         return df
@@ -699,23 +701,112 @@ def save_results(model, metrics_diff, metrics_orig, residuals_diff, residuals_or
         logger.error(f"Error saving results: {str(e)}")
         raise
 
-def main():
-    """Main execution function."""
+def inverse_difference(y_train, forecast, seasonal_period=12):
+    """
+    Inverse difference the forecast.
+    
+    Args:
+        y_train (pd.Series): Training data.
+        forecast (pd.Series): Forecast on differenced scale.
+        seasonal_period (int): Seasonal period (default: 12).
+    
+    Returns:
+        pd.Series: Forecast on original scale.
+    """
     try:
-        # Load data
-        data = load_data("original_data.csv")
+        # Inverse difference the forecast
+        forecast_orig = y_train.iloc[-seasonal_period:] + forecast
+        return forecast_orig
+    except Exception as e:
+        logger.error(f"Error inverting difference: {str(e)}")
+        raise
+
+def plot_residuals_analysis(residuals, title, file_path):
+    """
+    Plot residual analysis.
+    
+    Args:
+        residuals (pd.Series): Residuals.
+        title (str): Plot title.
+        file_path (str): File path to save plot.
+    """
+    try:
+        # Plot residuals
+        plt.figure(figsize=(12, 6))
+        plt.plot(residuals.index, residuals, label='Residuals', color='blue', linewidth=2)
+        plt.title(title, fontsize=14, pad=20)
+        plt.xlabel('Date', fontsize=12, fontweight='bold')
+        plt.ylabel('Residual', fontsize=12, fontweight='bold')
+        plt.legend(fontsize=10, frameon=True, facecolor='white', edgecolor='none')
+        plt.grid(True, alpha=0.3, linestyle='--')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
         
+        plt.savefig(file_path, dpi=300, bbox_inches='tight')
+        plt.close()
+        
+    except Exception as e:
+        logger.error(f"Error plotting residuals: {str(e)}")
+        raise
+
+def main():
+    """
+    Main execution function for SARIMA model.
+    Allows choosing between raw and pre-differenced input data.
+    """
+    try:
+        # Argument parsing for flexible data input
+        parser = argparse.ArgumentParser(description="SARIMA Forecasting Model")
+        parser.add_argument('--data_csv', type=str, default=None,
+                            help="Path to input CSV (differenced or raw). If not set, will auto-detect.")
+        parser.add_argument('--already_differenced', action='store_true',
+                            help="Set if the input file is already differenced (skip internal differencing).")
+        parser.add_argument('--target_col', type=str, default="SalesIndex",
+                            help="Target column for forecasting (default: SalesIndex)")
+        parser.add_argument('--train_size', type=float, default=0.8,
+                            help="Proportion of data for training (default: 0.8)")
+        args, _ = parser.parse_known_args()
+
+        # Create save directory
+        save_dir = "sarima_results"
+        os.makedirs(save_dir, exist_ok=True)
+
+        # Auto-detect input file if not specified
+        default_diff = "differenced_data.csv"
+        default_raw = "original_data.csv"
+        if args.data_csv is not None:
+            input_file = args.data_csv
+        elif os.path.exists(default_diff):
+            input_file = default_diff
+        else:
+            input_file = default_raw
+
+        # Heuristic: If using differenced_data.csv, set already_differenced True unless overridden
+        already_differenced = args.already_differenced or (input_file == default_diff)
+        logger.info(f"Using input file: {input_file}")
+        logger.info(f"Input is already differenced: {already_differenced}")
+
+        # Load data
+        data = load_data(input_file, args.target_col)
+
         # Split data
         y_train, y_test = train_test_split(
             data,
-            target_col="SalesIndex",
-            train_size=0.8
+            target_col=args.target_col,
+            train_size=args.train_size
         )
-        
-        # Calculate differenced data
-        y_train_diff = y_train.diff().dropna()
-        y_test_diff = y_test.diff().dropna()
-        
+
+        if already_differenced:
+            # Use as-is
+            y_train_diff = y_train.copy()
+            y_test_diff = y_test.copy()
+            logger.info("Skipping internal differencing (input is already differenced)")
+        else:
+            # Perform internal differencing
+            y_train_diff = y_train.diff().dropna()
+            y_test_diff = y_test.diff().dropna()
+            logger.info("Performed internal differencing on input data")
+
         # Fit SARIMA model using auto_arima on differenced data
         logger.info("Fitting SARIMA model using auto_arima on differenced data...")
         model = auto_arima(
@@ -726,14 +817,8 @@ def main():
             max_p=5,
             max_q=5,
             max_d=2,
-            m=12,  # Monthly seasonal period
+            m=12,  # Monthly seasonality
             seasonal=True,
-            start_P=1,
-            start_Q=1,
-            start_D=1,
-            max_P=2,
-            max_Q=2,
-            max_D=1,
             stepwise=True,
             suppress_warnings=True,
             error_action='ignore',
@@ -741,33 +826,36 @@ def main():
             information_criterion='aic',
             random_state=42
         )
-        
+
         # Generate forecast on differenced scale
         forecast_result_diff = model.predict(n_periods=len(y_test_diff), return_conf_int=True)
         forecast_diff = forecast_result_diff[0]
         conf_int_diff = pd.DataFrame(forecast_result_diff[1], columns=['lower', 'upper'])
-        
+
         # Ensure forecast dates match test data dates
         forecast_diff.index = y_test_diff.index
         conf_int_diff.index = y_test_diff.index
-        
+
         # Calculate residuals on differenced scale
         residuals_diff = y_test_diff - forecast_diff
-        
-        # Inverse difference the forecast
-        forecast_orig = inverse_difference(y_train, forecast_diff, seasonal_period=12)
-        conf_int_orig = pd.DataFrame({
-            'lower': inverse_difference(y_train, conf_int_diff['lower'], seasonal_period=12),
-            'upper': inverse_difference(y_train, conf_int_diff['upper'], seasonal_period=12)
-        })
-        
-        # Ensure forecast and confidence intervals are aligned with test data
-        forecast_orig = forecast_orig.loc[y_test.index]
-        conf_int_orig = conf_int_orig.loc[y_test.index]
-        
-        # Calculate residuals on original scale
-        residuals_orig = y_test - forecast_orig
-        
+
+        # Inverse difference the forecast if necessary
+        if already_differenced:
+            forecast_orig = forecast_diff.copy()
+            conf_int_orig = conf_int_diff.copy()
+            residuals_orig = residuals_diff.copy()
+            logger.info("No inverse differencing performed (input is already differenced)")
+        else:
+            forecast_orig = inverse_difference(y_train, forecast_diff)
+            conf_int_orig = pd.DataFrame({
+                'lower': inverse_difference(y_train, conf_int_diff['lower']),
+                'upper': inverse_difference(y_train, conf_int_diff['upper'])
+            })
+            # Ensure forecast and confidence intervals are aligned with test data
+            forecast_orig = forecast_orig.loc[y_test.index]
+            conf_int_orig = conf_int_orig.loc[y_test.index]
+            residuals_orig = y_test - forecast_orig
+
         # Save visualizations for both scales
         save_visualizations(
             y_train, y_test,
@@ -775,19 +863,19 @@ def main():
             conf_int_diff, conf_int_orig,
             residuals_diff, residuals_orig
         )
-        
+
         # Calculate and save metrics for both scales
         metrics_diff = evaluate_model(y_test_diff, forecast_diff, "differenced")
         metrics_orig = evaluate_model(y_test, forecast_orig, "original")
-        
+
         # Save results
         save_results(model, metrics_diff, metrics_orig, residuals_diff, residuals_orig)
-        
+
         # Display summary in console
         display_summary(model, metrics_diff, metrics_orig)
-        
+
         logger.info("SARIMA modeling completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}")
         raise

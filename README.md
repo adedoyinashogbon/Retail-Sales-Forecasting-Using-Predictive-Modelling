@@ -81,6 +81,26 @@ python Models/sarimax.py
 
 Results and plots will be saved in model-specific results folders.
 
+### SARIMAX: Dropping Low-Correlation Exogenous Variables
+
+The SARIMAX script supports an optional command-line argument for exogenous variable selection:
+
+- `--drop_failed_correlators`: If you include this flag, exogenous variables with an absolute correlation less than 0.05 with the target (on the training set) will be dropped automatically before model fitting. By default, all exogenous variables are kept and their correlations are logged for your review.
+
+**Usage Examples:**
+
+- **Keep all exogenous variables (default):**
+  ```bash
+  python Models/sarimax.py --data_csv <input.csv> --target_col <target> --exog_cols <col1,col2,...>
+  ```
+- **Drop low-correlation exogenous variables:**
+  ```bash
+  python Models/sarimax.py --data_csv <input.csv> --target_col <target> --exog_cols <col1,col2,...> --drop_failed_correlators
+  ```
+
+- The correlation threshold is 0.05 (modifiable in code).
+- Correlations are computed on the training set and logged for transparency.
+
 ---
 
 ## 📊 Building the Report
