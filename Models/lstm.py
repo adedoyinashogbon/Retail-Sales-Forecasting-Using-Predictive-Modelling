@@ -286,13 +286,15 @@ def plot_training_history(history, title: str = "Model Training History", save_p
              verticalalignment='top', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
         plt.close()
+        logging.info(f"Training history plot saved to: {save_path}")
     else:
         plt.show()
 
 def plot_residual_diagnostics(residuals: np.ndarray, y_true: np.ndarray, y_pred: np.ndarray, 
-                            dates: pd.DatetimeIndex = None, save_path: str = None) -> None:
+                              dates: pd.DatetimeIndex = None, save_path: str = None) -> None:
     """
     Creates comprehensive diagnostic plots for residual analysis with enhanced visualization.
     
@@ -306,6 +308,13 @@ def plot_residual_diagnostics(residuals: np.ndarray, y_true: np.ndarray, y_pred:
     residuals = residuals.flatten()
     y_true = y_true.flatten()
     y_pred = y_pred.flatten()
+    
+    # Ensure 'dates' and 'residuals' arrays have the same length
+    if dates is not None and len(dates) != len(residuals):
+        min_len = min(len(dates), len(residuals))
+        logging.warning(f"Dates and residuals arrays have different lengths. Truncating to {min_len} for plotting.")
+        dates = dates[:min_len]
+        residuals = residuals[:min_len]
     
     fig = plt.figure(figsize=(15, 12))
     
@@ -324,7 +333,16 @@ def plot_residual_diagnostics(residuals: np.ndarray, y_true: np.ndarray, y_pred:
     
     # Residuals vs Fitted
     ax2 = plt.subplot(222)
-    ax2.scatter(y_pred, residuals, alpha=0.5, color='blue')
+    # Ensure y_pred and residuals have the same length
+    if len(y_pred) != len(residuals):
+        min_len = min(len(y_pred), len(residuals))
+        logging.warning(f"y_pred and residuals arrays have different lengths. Truncating to {min_len} for plotting.")
+        y_pred_plot = y_pred[:min_len]
+        residuals_plot = residuals[:min_len]
+    else:
+        y_pred_plot = y_pred
+        residuals_plot = residuals
+    ax2.scatter(y_pred_plot, residuals_plot, alpha=0.5, color='blue')
     ax2.set_title('Residuals vs Fitted Values', fontsize=14, pad=15)
     ax2.set_xlabel('Fitted Values', fontsize=12)
     ax2.set_ylabel('Residual', fontsize=12)
@@ -359,15 +377,17 @@ def plot_residual_diagnostics(residuals: np.ndarray, y_true: np.ndarray, y_pred:
     else:
         plt.show()
 
-def save_visualizations(results_dir: str = "lstm_results") -> str:
+def save_visualizations(results_dir: str = None) -> str:
     """
-    Creates a directory for saving visualizations if it doesn't exist.
+    Creates a directory for saving visualizations.
     
     Parameters:
-        results_dir: Directory name for saving visualizations
+        results_dir: Directory name for saving visualizations (default: 'results/lstm')
     Returns:
         Path to the visualizations directory
     """
+    if results_dir is None:
+        results_dir = 'results/lstm'
     viz_dir = os.path.join(results_dir, "visualizations")
     if not os.path.exists(viz_dir):
         os.makedirs(viz_dir)
@@ -552,16 +572,19 @@ def calculate_feature_importance(model: Sequential, X: np.ndarray, y: np.ndarray
 
 def save_results(results: dict, results_dir: str = None, filename: str = None) -> None:
     """
-    Saves the results dictionary to a JSON file with improved organization.
+    Saves the model results to a JSON file with proper handling of numpy types.
     
-    Args:
+    Parameters:
         results: Dictionary containing model results
-        results_dir: Directory to save results (uses default if None)
+        results_dir: Directory to save results (if None, uses default)
         filename: Optional filename (if None, generates timestamped filename)
     """
     # Use default results directory if none provided
     if results_dir is None:
-        results_dir = "lstm_results"
+        results_dir = os.path.join("results", "lstm")
+    
+    # Ensure the directory exists
+    os.makedirs(results_dir, exist_ok=True)
     
     if filename is None:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
