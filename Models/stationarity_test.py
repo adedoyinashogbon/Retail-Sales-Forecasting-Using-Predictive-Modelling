@@ -267,11 +267,20 @@ def main():
         dirs = create_directories()
         
         # Define input/output paths
-        file_path = os.path.join(dirs['data'], "enhanced_retail_dataset.csv")
-        
+        import glob
+        import json
+        import re
+        eda_dir = os.path.join('results', 'eda')
+        pattern = os.path.join(eda_dir, 'enhanced_retail_dataset_*.csv')
+        files = sorted(glob.glob(pattern), reverse=True)
+        if not files:
+            raise FileNotFoundError(f"No enhanced_retail_dataset_*.csv found in {eda_dir}")
+        file_path = files[0]
+        logger.info(f"Using latest EDA-enhanced dataset: {file_path}")
+
         # Load and process data
         df = load_data(file_path)
-        
+
         # Define columns to test
         columns_to_test = [
             "SalesIndex", 
@@ -279,22 +288,39 @@ def main():
             "UnemploymentRate", 
             "InflationRate"
         ]
-        
+
         # Run stationarity tests
         results = test_series_stationarity(
             df,
             columns_to_test,
             output_dir=dirs['plots']
         )
-        
-        # Save results to JSON
-        import json
-        results_file = os.path.join(dirs['results'], 'stationarity_results.json')
-        with open(results_file, 'w') as f:
-            json.dump(results, f, indent=4)
-        
+
+        # Determine which columns require differencing
+        columns_to_difference = []
+        for col, tests in results.items():
+            adf_p = tests['adf']['p_value']
+            kpss_p = tests['kpss']['p_value']
+            # ADF: p > 0.05 means non-stationary; KPSS: p <= 0.05 means non-stationary
+            if (adf_p > 0.05) or (kpss_p <= 0.05):
+                columns_to_difference.append(col)
+
+        recommendation = {
+            "stationarity_results": results,
+            "columns_to_difference": columns_to_difference
+        }
+        # Save recommendation JSON
+        rec_file = os.path.join(dirs['results'], 'stationarity_recommendation.json')
+        with open(rec_file, 'w') as f:
+            json.dump(recommendation, f, indent=4)
         logger.info("✅ Stationarity tests completed successfully")
-        logger.info(f"Results saved to: {results_file}")
+        logger.info(f"Results saved to: {rec_file}")
+        print("\nColumns that require differencing:")
+        if columns_to_difference:
+            for col in columns_to_difference:
+                print(f"  - {col}")
+        else:
+            print("  None. All series appear stationary.")
         
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")

@@ -321,15 +321,30 @@ def main() -> pd.DataFrame:
     try:
         # Configuration
         config = VisualizationConfig()
-        file_path = os.path.join(dirs['data'], "final_merged_dataset.csv")
+        # Paths to cleaned files
+        retail_path = os.path.join(dirs['data'], "cleaned_retail_index.csv")
+        factors_path = os.path.join(dirs['data'], "cleaned_external_factors.csv")
+        merged_path = os.path.join(dirs['data'], "final_merged_dataset.csv")
         
-        # Initialize components
+        # Load cleaned datasets
+        if not Path(retail_path).exists():
+            raise FileNotFoundError(f"Retail index file not found: {retail_path}")
+        if not Path(factors_path).exists():
+            raise FileNotFoundError(f"External factors file not found: {factors_path}")
+        df_retail = pd.read_csv(retail_path, parse_dates=["Date"])
+        df_factors = pd.read_csv(factors_path, parse_dates=["Date"])
+        
+        # Merge on 'Date'
+        df_merged = pd.merge(df_retail, df_factors, on="Date", how="inner")
+        df_merged.sort_values("Date", inplace=True)
+        df_merged.to_csv(merged_path, index=False)
+        logger.info(f"[SUCCESS] Merged dataset saved as {merged_path}")
+        
+        # Proceed with EDA and feature engineering
         loader = DataLoader()
         explorer = DataExplorer(config)
         engineer = FeatureEngineer()
-        
-        # Load and process data
-        df = loader.load_data(file_path)
+        df = loader.load_data(merged_path)
         results = explorer.explore_data(df)
         df_enhanced = engineer.create_features(df)
         

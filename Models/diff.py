@@ -115,9 +115,9 @@ def kpss_test(series, col_name="Series"):
         print(f"  p-value:        {result[1]:.4f}")
         print(f"  Critical Values: {result[3]}")
         if result[1] > 0.05:
-            print("  ✅ Stationary (Fail to reject null).")
+            print("  Stationary (Fail to reject null).")
         else:
-            print("  ⚠️ Non-stationary (Reject null). Consider further differencing or transformation.")
+            print("  Non-stationary (Reject null). Consider further differencing or transformation.")
     except ValueError as e:
         print(f"KPSS test error on {col_name}: {e}")
 
@@ -142,7 +142,7 @@ def save_original_data(df, output_file):
         
         df_original = df[original_columns].copy()
         df_original.to_csv(output_file, index=False)
-        logger.info(f"✅ Saved original dataset as {output_file}")
+        logger.info(f"Saved original dataset as {output_file}")
         
     except Exception as e:
         logger.error(f"Error saving original data: {str(e)}")
@@ -176,39 +176,50 @@ def save_differenced_data(df, output_file):
 
 def plot_differencing_results(df, target_cols, output_dir):
     """
-    Creates visualization plots for original and differenced data.
-    
+    Creates visualization plots for differenced data, handling arbitrary differencing order columns.
     Args:
         df (pd.DataFrame): DataFrame containing the data
-        target_cols (list): List of columns to plot
+        target_cols (list): List of columns to plot (should be the actual differenced columns)
         output_dir (str): Directory to save plots
     """
+    import re
     for col in target_cols:
-        # Create figure with two subplots
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 8))
-        
-        # Plot original series
-        ax1.plot(df['Date'], df[col], label='Original', linewidth=2)
-        ax1.set_title(f'Original {col}', fontsize=14, pad=10)
+        # Try to extract the base column and differencing order
+        m = re.match(r"(.+)_Diff(\d+)$", col)
+        if m:
+            base_col = m.group(1)
+            diff_order = int(m.group(2))
+        else:
+            base_col = col
+            diff_order = 0
+        fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+        ax1, ax2 = axes
+        # Plot original series if available
+        if base_col in df.columns:
+            ax1.plot(df['Date'], df[base_col], label=f'Original {base_col}', linewidth=2)
+            ax1.set_title(f'Original {base_col}', fontsize=14, pad=10)
+        else:
+            ax1.text(0.5, 0.5, f'Original {base_col} not available', ha='center', va='center', fontsize=12)
+            ax1.set_title(f'Original {base_col} (not available)', fontsize=14, pad=10)
         ax1.set_xlabel('Date', fontsize=12)
         ax1.set_ylabel('Value', fontsize=12)
         ax1.grid(True, alpha=0.3, linestyle='--')
         ax1.tick_params(axis='x', rotation=45)
-        
         # Plot differenced series
-        diff_col = f"{col}_Diff1"
-        ax2.plot(df['Date'], df[diff_col], label='Differenced', color='orange', linewidth=2)
-        ax2.set_title(f'Differenced {col}', fontsize=14, pad=10)
+        if col in df.columns:
+            ax2.plot(df['Date'], df[col], label=f'Differenced ({col})', color='orange', linewidth=2)
+            ax2.set_title(f'Differenced {base_col} (order {diff_order})', fontsize=14, pad=10)
+        else:
+            ax2.text(0.5, 0.5, f'{col} not available', ha='center', va='center', fontsize=12)
+            ax2.set_title(f'Differenced {base_col} (order {diff_order}) (not available)', fontsize=14, pad=10)
+            logger.warning(f"{col} not found in DataFrame for plotting.")
         ax2.set_xlabel('Date', fontsize=12)
         ax2.set_ylabel('Value', fontsize=12)
         ax2.grid(True, alpha=0.3, linestyle='--')
         ax2.tick_params(axis='x', rotation=45)
-        
-        # Adjust layout and save
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"{col}_differencing.png"), dpi=300, bbox_inches='tight')
         plt.close()
-        
         logger.info(f"Saved differencing plot for {col}")
 
 def main():
@@ -219,8 +230,18 @@ def main():
         # Create directory structure
         dirs = create_directories()
         
-        # Input and output file paths
-        input_file = os.path.join(dirs['data_raw'], "enhanced_retail_dataset.csv")
+        import glob
+        import json
+        # Input: latest enhanced_retail_dataset_*.csv from results/eda/
+        eda_dir = os.path.join('results', 'eda')
+        pattern = os.path.join(eda_dir, 'enhanced_retail_dataset_*.csv')
+        files = sorted(glob.glob(pattern), reverse=True)
+        if not files:
+            raise FileNotFoundError(f"No enhanced_retail_dataset_*.csv found in {eda_dir}")
+        input_file = files[0]
+        logger.info(f"Using latest EDA-enhanced dataset from EDA output: {input_file}")
+        
+        # Output paths
         original_output = os.path.join(dirs['data_processed'], "original_data.csv")
         differenced_output = os.path.join(dirs['data_processed'], "differenced_data.csv")
         enhanced_output = os.path.join(dirs['data_processed'], "enhanced_retail_dataset_with_diff.csv")
@@ -231,40 +252,70 @@ def main():
         # Save original data first
         save_original_data(df, original_output)
 
-        # Target columns for differencing
-        target_cols = ["SalesIndex", "EmploymentRate", "UnemploymentRate", "InflationRate"]
+        # Read stationarity recommendation
+        rec_file = os.path.join('results', 'stationarity', 'stationarity_recommendation.json')
+        if not os.path.exists(rec_file):
+            raise FileNotFoundError(f"Stationarity recommendation file not found: {rec_file}")
+        with open(rec_file, 'r') as f:
+            recommendation = json.load(f)
+        columns_to_difference = recommendation.get('columns_to_difference', [])
 
-        print("\n🔹 Original columns stationarity check:")
-        for col in target_cols:
-            if col in df.columns:
-                adf_test(df[col], col_name=col)
-                kpss_test(df[col], col_name=col)
+        print("\nColumns to difference as recommended:")
+        logger.info(f"Columns to difference: {columns_to_difference}")
+        for col in columns_to_difference:
+            print(f"  - {col}")
+        if not columns_to_difference:
+            print("  None. No differencing required. Saving original data as differenced_data.csv.")
+            df.to_csv(differenced_output, index=False)
+            logger.info(f"No differencing required. Original data saved as {differenced_output}")
+            return
 
-        # Apply first differencing
-        print("\n🔹 Applying 1st differencing to each non-stationary column...")
-        for col in target_cols:
-            if col in df.columns:
-                diff_col = col + "_Diff1"
-                df[diff_col] = df[col].diff()
-
-        # Drop rows with NaN from differencing
-        df_clean = df.dropna()
-
-        # Re-check stationarity on the differenced columns
-        print("\n🔹 Stationarity check on differenced columns:")
-        for col in target_cols:
-            diff_col = col + "_Diff1"
-            if diff_col in df_clean.columns:
-                adf_test(df_clean[diff_col], col_name=diff_col)
-                kpss_test(df_clean[diff_col], col_name=diff_col)
-
-        # Create visualization plots
-        plot_differencing_results(df_clean, target_cols, dirs['plots'])
-
-        # Save the datasets
-        save_differenced_data(df_clean, differenced_output)
-        df_clean.to_csv(enhanced_output, index=False)
+        # Enhanced: Iterative differencing with post-checks
+        max_diff = 3
+        diff_tracker = {col: 0 for col in columns_to_difference}
+        df_work = df.copy()
+        still_non_stationary = columns_to_difference.copy()
+        diff_cols = []
+        for diff_round in range(1, max_diff + 1):
+            next_non_stationary = []
+            print(f"\n--- Differencing round {diff_round} ---")
+            for col in still_non_stationary:
+                base_col = col if diff_tracker[col] == 0 else f"{col}_Diff{diff_tracker[col]}"
+                diff_col = f"{col}_Diff{diff_tracker[col] + 1}"
+                df_work[diff_col] = df_work[base_col].diff()
+                diff_tracker[col] += 1
+                # Drop initial NaN rows for testing
+                test_series = df_work[diff_col].dropna()
+                # Stationarity test
+                adf_result = adfuller(test_series)
+                kpss_result = kpss(test_series, regression='c', nlags='auto')
+                adf_p = adf_result[1]
+                kpss_p = kpss_result[1]
+                print(f"{diff_col}: ADF p={adf_p:.4f}, KPSS p={kpss_p:.4f}")
+                logger.info(f"{diff_col}: ADF p={adf_p:.4f}, KPSS p={kpss_p:.4f}")
+                if (adf_p > 0.05) or (kpss_p <= 0.05):
+                    next_non_stationary.append(col)
+                else:
+                    print(f"{col} became stationary after {diff_tracker[col]} difference(s).")
+                    logger.info(f"{col} became stationary after {diff_tracker[col]} difference(s).")
+                    diff_cols.append(diff_col)
+            if not next_non_stationary:
+                break
+            still_non_stationary = next_non_stationary
+        # Final cleanup: drop rows with any NaN in final differenced columns
+        keep_cols = ['Date'] + diff_cols
+        df_final = df_work[keep_cols].dropna()
+        # Plot final differenced columns (use the actual differenced columns)
+        plot_differencing_results(df_final, diff_cols, dirs['plots'])
+        # Save datasets
+        df_final.to_csv(differenced_output, index=False)
+        logger.info(f"[SUCCESS] Saved differenced dataset as {differenced_output}")
+        df_work.to_csv(enhanced_output, index=False)
         logger.info(f"[SUCCESS] Saved complete enhanced dataset with differenced columns as {enhanced_output}")
+        print("\nSummary of differencing:")
+        for col in diff_tracker:
+            print(f"  {col}: {diff_tracker[col]} difference(s) applied.")
+        print(f"\nDifferenced data saved as {differenced_output}")
         
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}")

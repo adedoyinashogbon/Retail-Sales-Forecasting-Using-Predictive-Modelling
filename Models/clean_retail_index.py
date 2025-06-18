@@ -137,7 +137,12 @@ if __name__ == "__main__":
     # Example usage
     input_file = r"C:\Users\Owner\Desktop\Retail Sales Forecasting Using Predictive Modelling\Datasets\retail-sales-index-time-series-v33.csv"
     output_file = "data/processed/cleaned_retail_index.csv"
-    
+    # Ensure directory exists
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    # Ensure output directory exists
+    output_dir = os.path.dirname(output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
     try:
         clean_retail_index_filtered(
             input_file=input_file,

@@ -141,6 +141,10 @@ def clean_and_merge_external_factors(
 
         # Save merged dataset
         output_path = os.path.join(dirs['data_processed'], output_file)
+        # Ensure output directory exists
+        output_dir = os.path.dirname(output_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir, exist_ok=True)
         merged_df.to_csv(output_path, index=False)
         logger.info(f"✅ Cleaned External Factors saved as: {output_path}")
         
@@ -162,8 +166,7 @@ if __name__ == "__main__":
         dirs = create_directories()
         
         # Define output path
-        output_path = "cleaned_external_factors.csv"
-        
+        output_path = "data/processed/cleaned_external_factors.csv"
         # Process external factors
         clean_and_merge_external_factors(output_path)
         
