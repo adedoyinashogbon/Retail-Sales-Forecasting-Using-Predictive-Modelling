@@ -223,13 +223,35 @@ def plot_differencing_results(df, target_cols, output_dir):
         logger.info(f"Saved differencing plot for {col}")
 
 def main():
-    """
-    Main function to process and difference the retail dataset.
-    """
+    dirs = create_directories()
+    import sys
+    import io
+    import json
+    from datetime import datetime
+    # Capture print and error output
+    stdout_buffer = io.StringIO()
+    stderr_buffer = io.StringIO()
+    sys_stdout = sys.stdout
+    sys_stderr = sys.stderr
+    class Tee(object):
+        def __init__(self, *files):
+            self.files = files
+        def write(self, obj):
+            for f in self.files:
+                f.write(obj)
+                f.flush()
+        def flush(self):
+            for f in self.files:
+                f.flush()
+    sys.stdout = Tee(sys_stdout, stdout_buffer)
+    sys.stderr = Tee(sys_stderr, stderr_buffer)
+    output_capture = {'prints': [], 'errors': []}
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    json_output_path = os.path.join('results', 'differencing', f'diff_run_output_{timestamp}.json')
     try:
-        # Create directory structure
-        dirs = create_directories()
-        
+        """
+        Main function to process and difference the retail dataset.
+        """
         import glob
         import json
         # Input: latest enhanced_retail_dataset_*.csv from results/eda/
@@ -319,7 +341,23 @@ def main():
         
     except Exception as e:
         logger.error(f"Error in main execution: {str(e)}")
+        output_capture['errors'].append(str(e))
         raise
+    finally:
+        # Collect all print outputs
+        stdout_contents = stdout_buffer.getvalue()
+        if stdout_contents:
+            output_capture['prints'].extend(stdout_contents.strip().split('\n'))
+        stderr_contents = stderr_buffer.getvalue()
+        if stderr_contents:
+            output_capture['errors'].extend(stderr_contents.strip().split('\n'))
+        # Save JSON output
+        try:
+            os.makedirs(os.path.dirname(json_output_path), exist_ok=True)
+            with open(json_output_path, 'w', encoding='utf-8') as f:
+                json.dump(output_capture, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            logger.error(f"Failed to save run output JSON: {str(e)}")
 
 if __name__ == "__main__":
     main()
