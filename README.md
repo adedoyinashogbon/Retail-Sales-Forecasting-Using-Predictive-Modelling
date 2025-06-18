@@ -35,6 +35,39 @@ This project implements and compares multiple time series forecasting models (AR
 
 ---
 
+## 🧑‍🔬 Preprocessing Pipeline
+
+The project includes a robust, modular preprocessing pipeline to prepare data for modeling:
+
+1. **Data Cleaning:**
+   - `Models/clean_retail_index.py` and `Models/clean_external_factors.py`
+   - Cleans raw retail and external datasets, handling missing values and formatting.
+2. **EDA & Feature Engineering:**
+   - `Models/eda.py`
+   - Merges, explores, and enhances features; saves the enhanced dataset in `results/eda/` with a timestamp.
+3. **Stationarity Testing:**
+   - `Models/stationarity_test.py`
+   - Loads the latest EDA output, runs ADF and KPSS tests, and recommends columns for differencing. Outputs detailed results and recommendations to `results/stationarity/`.
+4. **Iterative Differencing:**
+   - `Models/diff.py`
+   - Reads stationarity recommendations, applies differencing iteratively (up to order 3), and re-tests for stationarity after each step. Only stops when all series are stationary or max order reached. Plots and saves all results robustly.
+
+**To run the full preprocessing sequence:**
+
+```bash
+python Models/clean_external_factors.py
+python Models/clean_retail_index.py
+python Models/eda.py
+python Models/stationarity_test.py
+python Models/diff.py
+```
+
+- All outputs are saved with timestamps and in dedicated results folders for traceability.
+- Intermediate and final datasets are in `results/eda/`, `results/stationarity/`, and `data/processed/`.
+- Plots and logs are saved for each step.
+
+---
+
 ## 🧑‍💻 Running Models
 
 Run individual model scripts from the `Models/` directory:
