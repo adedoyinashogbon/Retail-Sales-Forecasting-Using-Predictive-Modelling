@@ -173,7 +173,7 @@ pdflatex Final_report.tex
 
 ## License
 
-This project is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0].
+This project is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
 ---
 
